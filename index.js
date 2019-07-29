@@ -13,23 +13,8 @@ const db = require('./modules/database');
 app.use(express.json());
 app.use(express.static('build'));
 
-// app.get('/',(req,res) => {
-//     console.log("ON");
-//     res.status(200).send("HI");
-//     // let shop = req.query.shop;
-
-//     // if (shop === undefined){
-//     //     res.status(403).send("Missing parameters");
-//     // }
-//     // else {
-//     //     res.sendFile(path.join(__dirname, 'build', 'app.html'));
-//     // }
-// });
-
-
 // verify request with shop and token params
 app.use(/^\/api\/.*/, (req, res, next) => {
-
     let {
         shop,
         token
@@ -58,28 +43,31 @@ app.get('/api', (req, res) => {
     res.status(200).send(`Hello world ${req.query.s}`);
 });
 
-app.get('/api/getStorefrontSettings', async (req, res) => {
-    let obj = await db.getStorefrontSettings({
+app.get('/api/getAllSettings', async (req, res) => {
+    let obj = await db.getAllSettings({
         shop: req.query.shop
     });
-    console.log(obj);
-    // provide user with the google api key
+    
+    // provide user with the settings
     let returnJSON = {
         wrapperClass: obj.wrapperClass,
         sectionHeader: obj.sectionHeader,
+        googleAPIKey: obj.googleAPIKey,
+        googleAPIWhitelistDomains: obj.googleAPIWhitelistDomains,
     }
     res.status(200).send(returnJSON);
 })
 
-app.get('/api/getGoogleAPIKey', async (req, res) => {
-    let obj = await db.getGoogleAPIKey({
+app.get('/api/getBackendSettings', async (req, res) => {
+    let obj = await db.getBackendSettings({
         shop: req.query.shop
     });
-    let apiKey = obj.googleAPIKey;
-
+    
+    console.log(obj);
     // provide user with the google api key
     let returnJSON = {
-        key: apiKey,
+        key: obj.googleAPIKey,
+        googleAPIWhitelistDomains: obj.googleAPIWhitelistDomains
     }
     res.status(200).send(returnJSON);
 })
@@ -204,6 +192,9 @@ app.get('/auth', (req, res) => {
 
     console.log("FIRST HOOK RECEIVED AND PROCESSED. REDIRECTING TO " + shopifyhook);
 
+
+
+    // redirect back to shopify to finish installing
     res.redirect(shopifyhook);
 });
 
@@ -240,7 +231,7 @@ app.get('/auth/callback', async (req, res) => {
             })
             .then(async (response) => {
                 accessToken = response.data.access_token;
-                // console.log(accessToken);
+                console.log(accessToken);
 
                 // if user doesn't exist in the db
                 if (!checkInstallation.exist) {
@@ -249,7 +240,8 @@ app.get('/auth/callback', async (req, res) => {
                     let userJson = {
                         shop: shop,
                         accessToken: accessToken,
-                        registerAt: registerAt
+                        registerAt: registerAt,
+                        active: 0, // active will be set to 1 after user process payment
                     }
                     db.registerUser(userJson);
                     console.log("User registered! ", userJson);
@@ -262,6 +254,12 @@ app.get('/auth/callback', async (req, res) => {
                     FUNC.initScriptTags(accessToken);
                     console.log(`script tags added for ${shop}`);
 
+                    // verify payment process
+                    // make a graphql request to shopify
+
+
+
+                    // redirect back to shop's apps panel
                     res.redirect(`https://${shop}/admin/apps`)
                 } else { // if user has the app in his/her store
 
@@ -280,6 +278,10 @@ app.get('/auth/callback', async (req, res) => {
     } else {
         res.status(403).send("Verification error");
     }
+});
+
+app.post('/auth/verifyBilling',(req,res) => {
+    console.log(req.body);
 });
 
 app.post('/uninstall', (req, res) => {

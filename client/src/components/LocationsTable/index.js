@@ -11,8 +11,20 @@ const mapStateToProps = state => {
   }
 }
 
+// const whitelistDomains = (props) => {
+//   const domains = props.domains;
+//   const listDomains = domains.map((domain,key) => {
+//     return (<p key={key}>
+//       {domain}
+//     </p>)
+//   });
+//   return (
+//     listDomains
+//   )
+// }
+
 class LocationsTable extends React.Component {
-  constructor() {
+  constructor() { 
     super();
     this.state = {
       dialogType: null,

@@ -22,7 +22,7 @@ function mapDispatchToProps(dispatch) {
 class IndexPage extends Component {
 
   async componentDidMount() {
-    
+
     await this.props.updateQueryString(window.location.search);
 
     // retrieve shop and token from url params
@@ -34,44 +34,30 @@ class IndexPage extends Component {
       let param = splittedParams[index].split('=');
       paramsObj[param[0]] = param[1]
     }
-    
-    axios.get(`/api/getGoogleAPIKey${this.props.queryString}`).then((response) => {
-        let apiKey = response.data.key;
-        
-        // pass api key to global store state
-        this.props.updateGoogleAPIKey(apiKey);
 
-      }).catch((error) => {
-        console.log("ERROR fetching google API Key");
-        console.error(error);
-      });
+    axios.get(`/api/getBackendSettings${this.props.queryString}`).then((response) => {
+      let apiKey = response.data.key;
+
+      // pass api key to global store state
+      this.props.updateGoogleAPIKey(apiKey);
+
+    }).catch((error) => {
+      console.log("ERROR fetching google API Key");
+      console.error(error);
+    });
   }
 
   render() {
-    console.log(this.props);
     return (
-
-      // Important! Always set the container height explicitly
-      <div>
+      // Important! Always set the container height explicitly   
+      <Page>
         {this.props && this.props.googleAPIKey &&
-          <Page>
-            {/* <Map
-              google={this.props.google}
-              center={{ lat: 18.5204, lng: 73.8567 }}
-              height='300px'
-              zoom={15}
-            /> */}
-            <LocationsTable />
-          </Page>
-
+          <LocationsTable />
         }
-        {!this.props.googleAPIKey &&
-          <Page>
-            <h1>Please provide a google api key in the settings panel</h1>  
-          </Page>
+        {this.props.googleAPIKey===undefined &&
+          <h1>Please provide a google api key in the settings panel</h1>
         }
-      </div>
-
+      </Page>
     );
   }
 }

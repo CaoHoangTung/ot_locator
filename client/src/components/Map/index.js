@@ -227,7 +227,7 @@ class Map extends React.Component {
   onMarkerDragEnd = (event) => {
     let newLat = event.latLng.lat(),
       newLng = event.latLng.lng();
-
+console.log(newLat,newLng);
     Geocode.fromLatLng(newLat, newLng).then(
       response => {
         const address = response.results[0].formatted_address,

@@ -1,3 +1,5 @@
+const CONST = require('../constants');
+
 const mysqlx = require('@mysql/xdevapi');
 
 let options = {
@@ -159,7 +161,7 @@ conn.then((session) => {
 
         let getSettings = await appdb
             .getTable('settings')
-            .select(['shop', 'store_front_settings','backend_settings'])
+            .select(['shop', 'store_front_settings', 'backend_settings'])
             .where('shop = :shop')
             .bind('shop', shop)
             .execute((row) => {
@@ -195,7 +197,50 @@ conn.then((session) => {
         }
     }
 
-    exports.getGoogleAPIKey = async (json) => {
+    exports.getAllSettings = async (json) => {
+        let shop = json.shop,
+            settings = {};
+
+        let getSettings = await appdb
+            .getTable('settings')
+            .select(['shop', 'store_front_settings', 'backend_settings'])
+            .where('shop = :shop')
+            .bind('shop', shop)
+            .execute((row) => {
+                let newRow = {
+                    store_front_settings: row[1],
+                    backend_settings: row[2],
+                }
+                settings = newRow;
+            })
+            .then((response) => {
+                return settings;
+            })
+            .catch((err) => {
+                if (err) {
+                    console.log(`DB: error getting storefront settings for shop ${shop}`);
+                    console.log(err);
+                    settings = null;
+                    return 0;
+                }
+            })
+
+        if (settings === null)
+            return {
+                status: 0
+            }
+        else {
+            return {
+                status: 1,
+                wrapperClass: settings['store_front_settings']['wrapperClass'],
+                sectionHeader: settings['store_front_settings']['sectionHeader'],
+                googleAPIKey: settings['backend_settings']['googleAPIKey'],
+                googleAPIWhitelistDomains: settings['backend_settings']['googleAPIWhitelistDomains']
+            }
+        }
+    }
+
+    exports.getBackendSettings = async (json) => {
         let shop = json.shop,
             settings = {};
 
@@ -230,6 +275,7 @@ conn.then((session) => {
             return {
                 status: 1,
                 googleAPIKey: settings['backend_settings']['googleAPIKey'],
+                googleAPIWhitelistDomains: settings['backend_settings']['googleAPIWhitelistDomains']
             }
         }
     }
@@ -269,14 +315,19 @@ conn.then((session) => {
             };
 
         // change store_front_settings
-        for (let index in settings['store_front_settings']) {
-            settings['store_front_settings'][index] = updatedSettings[index];
+        for (let index in updatedSettings) {
+            // if current key belongs to store front settings
+            if (settings['store_front_settings'][index] !== undefined)
+                settings['store_front_settings'][index] = updatedSettings[index];
         }
 
         // change backend_settings
-        for (let index in settings['backend_settings']) {
-            settings['backend_settings'][index] = updatedSettings[index];
+        for (let index in updatedSettings) {
+            // if current key belongs to store front settings
+            if (settings['backend_settings'][index] !== undefined)
+                settings['backend_settings'][index] = updatedSettings[index];
         }
+        console.log("UPDATED: ",settings['backend_settings'])
 
         return appdb
             .getTable('settings')
@@ -329,6 +380,10 @@ conn.then((session) => {
 
     // add user to db
     exports.registerUser = (json) => {
+        let shop = json.shop,
+            accessToken = json.accessToken,
+            registerAt = json.registerAt;
+
         let store_front_json = {
             sectionHeader: 'Our stores',
             wrapperClass: '.main-content',
@@ -336,11 +391,12 @@ conn.then((session) => {
 
         let backend_json = {
             googleAPIKey: '',
+            googleAPIWhitelistDomains: [
+                `https://${shop}/*`,
+                `${CONST._rootAppURI}/?shop=${shop}&token=${accessToken}`
+            ]
         }
 
-        let shop = json.shop,
-            accessToken = json.accessToken,
-            registerAt = json.registerAt;
         return appdb
             .getTable('users')
             .insert(['shop', 'accessToken', 'registerAt'])

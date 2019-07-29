@@ -3,7 +3,7 @@ import './style.sass';
 import Axios from 'axios';
 import { connect } from 'react-redux';
 import { updateGoogleAPIKey, updateQueryString } from '../../actions';
-import { Button, Heading, Card, TextField, Banner, Page } from '@shopify/polaris';
+import { Button, Heading, Card, TextField, Banner, Page, Loading } from '@shopify/polaris';
 
 const mapStateToProps = state => {
   return {
@@ -31,7 +31,9 @@ class Settings extends Component {
         googleAPIKey: this.props.googleAPIKey,
         wrapperClass: '',
         sectionHeader: '',
-      }
+        googleAPIWhitelistDomains: '',
+      },
+      isLoading: true,
     }
   }
 
@@ -102,15 +104,17 @@ class Settings extends Component {
       })
   }
 
-  componentDidMount(){
-    Axios.get(`/api/getStorefrontSettings${this.props.queryString}`).then((response) => {
+  componentDidMount() {
+    Axios.get(`/api/getAllSettings${this.props.queryString}`).then((response) => {
       console.log(response);
       this.setState({
         settings: {
           ...this.state.settings,
           wrapperClass: response.data.wrapperClass,
           sectionHeader: response.data.sectionHeader,
-        }
+          googleAPIWhitelistDomains: response.data.googleAPIWhitelistDomains,
+        },
+        isLoading: false,
       })
     }).catch((error) => {
       console.log("ERROR fetching storefront settings");
@@ -119,8 +123,12 @@ class Settings extends Component {
   }
 
   render() {
+    console.log(this.state.settings);
     return (
       <Page>
+        {this.state.isLoading &&
+          <Loading />
+        }
         <Banner title={this.state.bannerTitle} status={this.state.bannerStatus} >
           <p>{this.state.bannerMsg}</p>
         </Banner>
@@ -156,6 +164,16 @@ class Settings extends Component {
               value={this.state.settings.googleAPIKey}
               onChange={this.handleGoogleAPIKeyChange}
             />
+
+            {this.state.settings.googleAPIWhitelistDomains && this.state.settings.googleAPIWhitelistDomains.map((domain, key) => {
+              return (
+                <TextField
+                  key={key}
+                  label="Whitelist domain"
+                  value={domain}
+                  disabled>
+                </TextField>)
+            })}
           </div>
         </Card>
         <Card>

@@ -3,6 +3,7 @@ import './App.css';
 import { AppProvider, Tabs, Card, Frame } from '@shopify/polaris';
 import IndexPage from './layouts/IndexPage';
 import Settings from './layouts/Settings';
+import HowToUse from './layouts/HowToUse';
 
 const tabs = [
   {
@@ -36,7 +37,7 @@ const tabPanels = [
   ),
   (
     <Tabs.Panel id="guidelines">
-      guidelines
+      <HowToUse/>
     </Tabs.Panel>
   )
 ];

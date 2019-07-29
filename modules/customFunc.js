@@ -58,7 +58,7 @@ exports.initScriptTags = (accessToken) => {
         {
             "script_tag": {
                 "event": "onload",
-                "src": "https://hoangtung1.localtunnel.me/static/js/ot_app.js"
+                "src": `${CONST._rootAppURI}/ot_app.js`
             }
         },  
         {
