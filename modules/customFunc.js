@@ -32,6 +32,60 @@ exports.verifyhostname = (hostname) => {
     return hostname.match(regExp) === null ? 0 : 1;
 }
 
+// request payment from merchant
+exports.requestPayment = async (shop,accessToken) => {
+    // import { request, GraphQLClient } from 'graphql-request';
+    const {request, GraphQLClient} = require('graphql-request');
+    
+    // subscriptionQuery contains graphql body
+    const subscriptionQuery = `mutation {
+        appSubscriptionCreate(
+          name: "Subscription Plan"
+          returnUrl: "${CONST._rootAppURI}/auth/chargeConfirm?shop=${shop}&token=${accessToken}"
+          trialDays: ${CONST._trialDays}
+          test: ${CONST._testMode}
+          lineItems: [{
+            plan: {
+              appRecurringPricingDetails: {
+                  price: { amount: ${CONST._recurringPrice}, currencyCode: USD }
+              }
+            }
+          }]
+        ) {
+          userErrors {
+            field
+            message
+          }
+          confirmationUrl
+          appSubscription {
+            id
+          }
+        }
+      }`
+      
+    // console.log(gql.request(`${CONST._shopAPIURI}/unstable/graphql.json`,subscriptionQuery).then(response=>console.log(response).catch(err=>{throw err})));
+    const client = new GraphQLClient(
+        `${CONST._shopAPIURI}/unstable/graphql.json`, 
+        {   
+            headers: {
+            "X-Shopify-Access-Token": accessToken
+            } 
+        }
+    );
+    
+    let result =  
+    client
+    .request(subscriptionQuery)
+    .then(response => {
+        return response
+    })
+    .catch(err => {
+        return err;
+    })
+    
+    return result;
+}
+
 exports.initWebHooks = (accessToken) => {
     axios.post(`${CONST._shopAPIURI}/${CONST._apiVersion}/webhooks.json`,
         {
@@ -49,7 +103,7 @@ exports.initWebHooks = (accessToken) => {
     ).then((_) => {
         return 1;
     }).catch((err) => {
-        if (err) throw (err.response.data.errors);
+        if (err) throw (err);
     })
 }
 

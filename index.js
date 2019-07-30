@@ -47,7 +47,7 @@ app.get('/api/getAllSettings', async (req, res) => {
     let obj = await db.getAllSettings({
         shop: req.query.shop
     });
-    
+
     // provide user with the settings
     let returnJSON = {
         wrapperClass: obj.wrapperClass,
@@ -62,7 +62,7 @@ app.get('/api/getBackendSettings', async (req, res) => {
     let obj = await db.getBackendSettings({
         shop: req.query.shop
     });
-    
+
     console.log(obj);
     // provide user with the google api key
     let returnJSON = {
@@ -159,7 +159,7 @@ app.get('/storefront/locations/all', async (req, res) => {
     res.status(200).send(returnJSON);
 })
 
-app.get('/storefront/settings', (req,res ) => {
+app.get('/storefront/settings', (req, res) => {
     let json = req.query;
 
     db.getStorefrontSettings(json)
@@ -207,14 +207,15 @@ app.get('/auth/callback', async (req, res) => {
     let code = params.code,
         hmac = params.hmac,
         shop = params.shop,
-        state = params.state,
-        timestamp = params.timestamp;
-
+        state = params.state;
+        
     let queryString = '';
     for (param in params) {
         if (param !== 'hmac')
             queryString += `${param}=${params[param]}&`;
     }
+
+    // remove the last '&' character
     queryString = queryString.substr(0, queryString.length - 1);
 
     // if request is valid
@@ -223,67 +224,97 @@ app.get('/auth/callback', async (req, res) => {
         // check if the request is instalation (init) or normal request
         let checkInstallation = await db.checkUserExist(shop);
 
-        // post to get accessToken from code
-        axios.post(`https://${shop}/admin/oauth/access_token`, {
-                client_id: process.env.SHOPIFY_API_KEY,
-                client_secret: process.env.SHOPIFY_API_SECRET_KEY,
-                code: code,
-            })
-            .then(async (response) => {
-                accessToken = response.data.access_token;
-                console.log(accessToken);
+        // get access token
+        let requestToGetAccessToken = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+            client_id: process.env.SHOPIFY_API_KEY,
+            client_secret: process.env.SHOPIFY_API_SECRET_KEY,
+            code: code,
+        })
+        let accessToken = requestToGetAccessToken.data.access_token;
 
-                // if user doesn't exist in the db
-                if (!checkInstallation.exist) {
+        // if user doesn't exist in the db
+        if (!checkInstallation.exist) {
+            // verify payment process
+            // make a graphql request to shopify
+            let requestPayment = await FUNC.requestPayment(shop, accessToken);
 
-                    let registerAt = FUNC.timeStampToDateTime(timestamp);
-                    let userJson = {
-                        shop: shop,
-                        accessToken: accessToken,
-                        registerAt: registerAt,
-                        active: 0, // active will be set to 1 after user process payment
-                    }
-                    db.registerUser(userJson);
-                    console.log("User registered! ", userJson);
+            let confirmationLink = requestPayment.appSubscriptionCreate !== undefined ? requestPayment.appSubscriptionCreate.confirmationUrl : requestPayment
+            if (requestPayment.appSubscriptionCreate !== undefined) {
+                console.log(confirmationLink);
+                // if the payment request is successful, register the user to db an redirect the user to the confirmation link
+                // let registerAt = FUNC.timeStampToDateTime(timestamp);
+                // let userJson = {
+                //     shop: shop,
+                //     accessToken: accessToken,
+                //     registerAt: registerAt,
+                // }
+                // db.registerUser(userJson);
+                // console.log("User registered! ", userJson);
 
-                    // add webhooks
-                    FUNC.initWebHooks(accessToken);
-                    console.log(`webhooks added for ${shop}`);
+                // // add webhooks
+                // FUNC.initWebHooks(accessToken);
+                // console.log(`webhooks added for ${shop}`);
 
-                    // add script tags
-                    FUNC.initScriptTags(accessToken);
-                    console.log(`script tags added for ${shop}`);
+                // // add script tags
+                // FUNC.initScriptTags(accessToken);
+                // console.log(`script tags added for ${shop}`);
 
-                    // verify payment process
-                    // make a graphql request to shopify
+                // redirect to the confirmatin link
+                // res.redirect(confirmationLink);
+                res.status(200).send(`
+                    <h2>Please click the button below to confirm your payment request!</h2>
+                    <a href="${confirmationLink}" target="blank">
+                        <button type="button" href="go" class="btn btn-primary btn-lg">Confirm</button>
+                    </a>
+                    <h2>Or click on this link: </h2>
+                    <a href="${confirmationLink}" target="blank">
+                        ${confirmationLink}
+                    </a>
+                    `);
+            } else {
+                console.log(response);
+                res.status(200).send("<h3>Error verifying your subscription. Please try again!</h3> <br> Error code:<br>" + response);
+            }
 
-
-
-                    // redirect back to shop's apps panel
-                    res.redirect(`https://${shop}/admin/apps`)
-                } else { // if user has the app in his/her store
-
-                    // returning the app interface
-                    res.redirect(`/?shop=${shop}&token=${accessToken}`)
-                }
-            })
-            .catch((err) => {
-                console.log("ERR", err);
-                res.status(200).send("Invalid token or shop");
-            });
-
-        return;
-
-
+        } else { // if user has the app in his/her store
+            // returning the app interface
+            if (checkInstallation.active) // if user has process payment
+                res.redirect(`/?shop=${shop}&token=${accessToken}`)
+            // res.status(200).send("OK");
+            else
+                res.redirect(`/notpay`)
+        }
     } else {
         res.status(403).send("Verification error");
     }
 });
 
-app.post('/auth/verifyBilling',(req,res) => {
-    console.log(req.body);
+// after the charge is confirmed, a request is fired in to this route
+app.get('/auth/chargeConfirm', (req, res) => {
+
+    let shop = req.query.shop,
+        accessToken = req.query.token;
+        
+    let registerAt = FUNC.timeStampToDateTime(Date.now()/1000);
+    let userJson = {
+        shop: shop,
+        accessToken: accessToken,
+        registerAt: registerAt,
+    }
+    db.registerUser(userJson);
+    console.log("User registered! ", userJson);
+
+    // add webhooks
+    FUNC.initWebHooks(accessToken);
+    console.log(`webhooks added for ${shop}`);
+
+    // add script tags
+    FUNC.initScriptTags(accessToken);
+    console.log(`script tags added for ${shop}`);
+    res.redirect(`https://${shop}/admin/apps`)
 });
 
+// when app is uninstalled, shopify will fire into this route
 app.post('/uninstall', (req, res) => {
     console.log(`APP UNINSTALLED BY ${req.body.domain}`);
 
@@ -294,7 +325,20 @@ app.post('/uninstall', (req, res) => {
     res.status(200).send("OK");
 })
 
-
 app.listen(PORT, () => {
     console.log("SERVER UP AND RUNNING ON PORT " + PORT);
 })
+
+app.get('/test', async (req, res) => {
+    let accessToken = req.query.token;
+    let requestPayment = await FUNC.requestPayment(accessToken);
+
+    let response = requestPayment.appSubscriptionCreate !== undefined ? requestPayment.appSubscriptionCreate.confirmationUrl : requestPayment
+    if (requestPayment.appSubscriptionCreate !== undefined) {
+        // if the payment request is successful, redirect the user to the confirmation link
+        res.redirect(response);
+    } else {
+        console.log(response);
+        res.status(200).send("<h3>Error verifying your subscription. Please try again!</h3> <br> Error code:<br>" + response);
+    }
+});
