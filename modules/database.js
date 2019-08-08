@@ -22,25 +22,72 @@ conn.then((session) => {
             })
     }
 
+    exports.getLocationByID = (json) => {
+        console.log("Requesting for location",json);
+
+        let {shop,idlocations} = json;
+        let shopData = null;
+
+        return appdb
+            .getTable('locations')
+            .select(['shop', 'address', 'city', 'area', 'state', 'lat', 'lng','store_name','priority','custom_address','custom_country',
+            'zip_code','phone','email','fax','website','note','store_image','marker_image','tags'])
+            .where('shop = :shop and idlocations = :idlocations')
+            .bind('shop', shop)
+            .bind('idlocations', idlocations)
+            .execute((row) => {
+                console.log("RET",row)
+                shopData = {
+                    store_name: row[7],
+                    priority: row[8],
+                    custom_address: row[9],
+                    custom_country: row[10],
+                    zip_code: row[11],
+                    phone: row[12],
+                    email: row[13],
+                    fax: row[14],
+                    website: row[15],
+                    note: row[16],
+                    store_image: row[17],
+                    marker_image: row[18],
+                    tags: row[19],
+                }
+            })
+            .then((_) => {
+                return {
+                    status: 1,
+                    location: shopData,
+                }
+            })
+            .catch((err) => {
+                if (err) {
+                    console.log(`DB: error fetching locations for shop ${shop}`);
+                    console.log(err);
+                    return {
+                        status: 0
+                    }
+                }
+            })
+    }
+
     exports.getAllLocations = (json) => {
         let shop = json.shop;
         let arr = [];
 
         return appdb
             .getTable('locations')
-            .select(['idlocations', 'shop', 'address', 'city', 'area', 'state', 'lat', 'lng'])
+            .select(['idlocations', 'shop', 'custom_address', 'store_name','address','lat','lng'])
             .where('shop = :shop')
             .bind('shop', shop)
             .execute((row) => {
                 let newRow = {
                     idlocations: row[0],
                     shop: row[1],
-                    address: row[2],
-                    city: row[3],
-                    area: row[4],
-                    state: row[5],
-                    lat: row[6],
-                    lng: row[7],
+                    custom_address: row[2],
+                    store_name: row[3],
+                    address: row[4],
+                    lat: row[5],
+                    lng: row[6],
                 }
                 arr.push(newRow);
             })
@@ -63,21 +110,19 @@ conn.then((session) => {
 
     exports.addLocation = (json) => {
         // add Location to db
+        let shop = json.shop;
 
-        let shop = json.shop,
-            address = json.location.address,
-            city = json.location.city,
-            area = json.location.area,
-            state = json.location.state,
-            lat = json.location.lat,
-            lng = json.location.lng;
+        let {address,city,area,state,lat,lng,store_name,priority,custom_address,custom_country,zip_code,phone,email,
+            fax,website,note,store_image,marker_image,tags} = json.location;
 
         console.log(`Adding location for shop '${shop}'`);
 
         return appdb
             .getTable('locations')
-            .insert(['shop', 'address', 'city', 'area', 'state', 'lat', 'lng'])
-            .values([shop, address, city, area, state, lat, lng])
+            .insert(['shop', 'address', 'city', 'area', 'state', 'lat', 'lng','store_name','priority','custom_address','custom_country',
+                    'zip_code','phone','email','fax','website','note','store_image','marker_image','tags'])
+            .values([shop, address, city, area, state, lat, lng, store_name,priority,custom_address,custom_country,
+                    zip_code,phone,email,fax,website,note,store_image,marker_image,tags])
             .execute()
             .then(() => {
                 return {
@@ -94,14 +139,9 @@ conn.then((session) => {
     }
 
     exports.modifyLocation = (json) => {
-        let idlocations = json.location.idlocations,
-            shop = json.shop,
-            address = json.location.address,
-            city = json.location.city,
-            area = json.location.area,
-            state = json.location.state,
-            lat = json.location.lat,
-            lng = json.location.lng;
+        let shop = json.shop;
+        let {idlocations,address,city,area,state,lat,lng,store_name,priority,custom_address,custom_country,
+            zip_code,phone,email,fax,website,note,store_image,marker_image,tags} = json.location;
 
         return appdb
             .getTable('locations')
@@ -111,7 +151,19 @@ conn.then((session) => {
             .set('area', area)
             .set('state', state)
             .set('lat', lat)
-            .set('lng', lng)
+            .set('store_name', store_name)
+            .set('priority', priority)
+            .set('custom_address', custom_address)
+            .set('custom_country', custom_country)
+            .set('zip_code', zip_code)
+            .set('phone', phone)
+            .set('email', email)
+            .set('fax', fax)
+            .set('website', website)
+            .set('note', note)
+            .set('store_image', store_image)
+            .set('marker_image', marker_image)
+            .set('tags', tags)
             .where('idlocations=:id')
             .bind('id', idlocations)
             .execute()

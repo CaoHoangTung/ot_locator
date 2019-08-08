@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import axios from 'axios';
 import LocationsTable from '../../components/LocationsTable';
-import { Page } from '@shopify/polaris';
+// import { Page } from '@shopify/polaris';
 import { connect } from 'react-redux';
 import { updateGoogleAPIKey, updateQueryString } from '../../actions';
 
@@ -22,7 +22,6 @@ function mapDispatchToProps(dispatch) {
 class IndexPage extends Component {
 
   async componentDidMount() {
-
     await this.props.updateQueryString(window.location.search);
 
     // retrieve shop and token from url params
@@ -34,7 +33,7 @@ class IndexPage extends Component {
       let param = splittedParams[index].split('=');
       paramsObj[param[0]] = param[1]
     }
-
+    
     axios.get(`/api/getBackendSettings${this.props.queryString}`).then((response) => {
       let apiKey = response.data.key;
 
@@ -50,14 +49,16 @@ class IndexPage extends Component {
   render() {
     return (
       // Important! Always set the container height explicitly   
-      <Page>
-        {this.props && this.props.googleAPIKey &&
+      <>
+        {(this.props && this.props.googleAPIKey) &&
           <LocationsTable />
         }
-        {this.props.googleAPIKey===undefined &&
+        {(this.props.googleAPIKey===undefined || this.props.googleAPIKey==="") &&
           <h1>Please provide a google api key in the settings panel</h1>
         }
-      </Page>
+
+        
+      </>
     );
   }
 }

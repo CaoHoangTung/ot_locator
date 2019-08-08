@@ -1,7 +1,7 @@
 import React from 'react';
 import Axios from 'axios';
 import './style.sass';
-import { Page, Card, ResourceList, TextStyle, Button, Loading } from '@shopify/polaris';
+import { DataTable, Card, Button, ButtonGroup, Loading, TextField } from '@shopify/polaris';
 import LocationDialog from '../LocationDialog';
 import { connect } from 'react-redux'
 
@@ -11,26 +11,17 @@ const mapStateToProps = state => {
   }
 }
 
-// const whitelistDomains = (props) => {
-//   const domains = props.domains;
-//   const listDomains = domains.map((domain,key) => {
-//     return (<p key={key}>
-//       {domain}
-//     </p>)
-//   });
-//   return (
-//     listDomains
-//   )
-// }
-
 class LocationsTable extends React.Component {
-  constructor() { 
+  constructor() {
     super();
     this.state = {
       dialogType: null,
       activeLocation: null,
       locations: [],
+      formattedLocations: [], // this will change due to user's sorting or searching
+      formattedLocationsStatic: [], // this will not change
       isLoading: true,
+      searchText: '',
     }
   }
 
@@ -47,28 +38,105 @@ class LocationsTable extends React.Component {
     })
   }
 
-  componentDidMount() {
+  showUpdateDialog = (location) => {
+    this.setState({ activeLocation: location, dialogType: 'update' })
+  }
 
-    Axios
-      .get(`/api/locations/all${this.props.queryString}`)
-      .then((response) => {
-        console.log("LOCATION: ", response);
-        if (response.data.status) {
-          this.setState({
-            locations: response.data.locations,
-            isLoading: false,
-          })
+  showDeleteDialog = (location) => {
+    this.setState({ activeLocation: location, dialogType: 'delete' })
+  }
+
+  async componentDidMount() {
+    let response = await
+      Axios
+        .get(`/api/locations/all${this.props.queryString}`)
+        .catch(err => {
+          if (err) throw err;
+        })
+        
+    if (response.data.status) {
+      let formattedLocations = [];
+      // location list is in response.data.locations
+      
+      // format location so we can put it into the polaris datatable
+      for (let key in response.data.locations) {
+        let location = response.data.locations[key];
+        let formattedLocation = [
+          (location.store_name !== null ? location.store_name : ""),
+          (location.custom_address !== null ? location.custom_address : ""),
+          (location.address !== null ? location.address : ""),
+          <ButtonGroup>
+            <Button onClick={() => this.showUpdateDialog(location)}>Edit</Button>
+            <Button destructive onClick={() => this.showDeleteDialog(location)}>Delete</Button>
+          </ButtonGroup>
+        ];
+        formattedLocations.push(formattedLocation);
+      }
+
+      this.setState({
+        locations: response.data.locations,
+        formattedLocations: formattedLocations,
+        formattedLocationsStatic: formattedLocations,
+        isLoading: false,
+      });
+    }
+  }
+
+  sortLocations = (rows, index, direction) => {
+    return [...rows].sort((rowA, rowB) => {
+      const valueA = rowA[index];
+      const valueB = rowB[index];
+
+      let descendingReturnValue = 0; // the sorting condition , default = 0 means we assume 2 elements are equal
+      if (valueB > valueA)
+        descendingReturnValue = 1;
+      else if (valueB < valueA)
+        descendingReturnValue = -1;
+
+      return direction === 'descending' ? descendingReturnValue : -descendingReturnValue;
+    });
+  };
+
+  handleSort = (rows) => (index, direction) => {
+    this.setState({ formattedLocations: this.sortLocations(rows, index, direction) });
+  };
+
+
+  handleSearchTextChange = (value) => {
+    this.setState({
+      searchText: value
+    })
+
+    // if search text is empty, return the default data
+    if (value === ''){
+      this.setState({
+        formattedLocations: this.state.formattedLocationsStatic
+      });
+    }
+    else{
+      let tmp = [];
+      for(let formattedLocation of this.state.formattedLocations){
+        for (let key=0 ; key < formattedLocation.length-1; key++){  // exclude the last column ( the column which contains buttons)
+          let fieldValue = formattedLocation[key];
+
+          if (fieldValue.includes(value)){
+            tmp.push(formattedLocation);
+            break;
+          }
         }
+      }
+
+      this.setState({
+        formattedLocations: tmp
       })
-      .catch(err => {
-        if (err) throw err;
-      })
+    }
   }
 
   render() {
 
     return (
       <>
+
         {this.state.dialogType !== null &&
           <LocationDialog
             dialogType={this.state.dialogType}
@@ -78,48 +146,80 @@ class LocationsTable extends React.Component {
           />
         }
 
-        <Page>
-          
-            {this.state.isLoading &&
-              <Loading />
-            } 
+        <>
 
-            <Card>
-              <ResourceList
-                showHeader
-                items={this.state.locations}
-                renderItem={(item, key) => {
+          {this.state.isLoading &&
+            <Loading />
+          }
+          <Card>
+            {/* <ResourceList
+              showHeader
+              items={this.state.locations}
+              renderItem={(item, key) => {
 
-                  return (
-                    <>
-                      <ResourceList.Item
-                        key={key}
-                        className="locationItemContainer"
-                        onClick={() => this.setState({ activeLocation: item, dialogType: 'update' })}
-                      >
-                        <h3>
-                          <TextStyle variation="strong">{item.address}
+                return (
+                  <>
+                    <ResourceList.Item
+                      key={key}
+                      className="locationItemContainer"
+                      onClick={() => this.setState({ activeLocation: item, dialogType: 'update' })}
+                    >
+                      <h3>
+                        <TextStyle variation="strong">{item.custom_address}
 
-                          </TextStyle>
-                        </h3>
-                        {/* <p>Delete</p> */}
-                        <div>{item.state}</div>
+                        </TextStyle>
+                      </h3>
+                      <div>{item.state}</div>
 
-                      </ResourceList.Item>
+                    </ResourceList.Item>
+                  </>
+                );
+              }}
+            /> */}
 
-
-                    </>
-                  );
-                }}
-              />
+            <div className="tableHeaderContainer">
               <div className="addLocationBtn">
                 <Button
                   onClick={() => this.setState({ dialogType: 'create', activeLocation: { lat: 21.0133525, lng: 105.81932660000007 } })}>Add a new location
-              </Button>
+                </Button>
               </div>
-            </Card>
-         
-        </Page>
+              <div className="searchBox">
+                <TextField
+                  label="Search"
+                  value={this.state.searchText}
+                  onChange={this.handleSearchTextChange}
+                />
+              </div>
+            </div>
+            <DataTable
+              columnContentTypes={[
+                'text',
+                'text',
+                'text',
+                'text',
+              ]}
+              headings={[
+                'Shop name',
+                'Custom address',
+                'Map address',
+                'Actions',
+              ]}
+              rows={this.state.formattedLocations}
+              sortable={[true, true, false]}
+              defaultSortDirection="descending"
+              // initialSortColumnIndex={4}
+              onSort={this.handleSort(this.state.formattedLocations)}
+              footerContent={`Showing ${this.state.formattedLocations.length} of ${this.state.formattedLocations.length} results`}
+            />
+
+
+            <div className="addLocationBtn">
+              <Button
+                onClick={() => this.setState({ dialogType: 'create', activeLocation: { lat: 21.0133525, lng: 105.81932660000007 } })}>Add a new location
+              </Button>
+            </div>
+          </Card>
+        </>
       </>
     )
   }

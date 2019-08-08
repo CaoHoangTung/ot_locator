@@ -56,7 +56,6 @@ class Map extends React.Component {
           city: (city) ? city : '',
           state: (state) ? state : '',
         };
-        console.log(this);
         
         this.setState(locationObj);
         this.props.updateCurrentLocation({
@@ -227,7 +226,7 @@ class Map extends React.Component {
   onMarkerDragEnd = (event) => {
     let newLat = event.latLng.lat(),
       newLng = event.latLng.lng();
-console.log(newLat,newLng);
+
     Geocode.fromLatLng(newLat, newLng).then(
       response => {
         const address = response.results[0].formatted_address,
@@ -267,7 +266,7 @@ console.log(newLat,newLng);
   };
 
   render() {
-    console.log("STATE", this.state);
+    // console.log("STATE", this.state);
 
     const AsyncMap = withScriptjs(
       withGoogleMap(

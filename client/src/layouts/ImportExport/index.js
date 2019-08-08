@@ -3,7 +3,7 @@ import './style.sass';
 import Axios from 'axios';
 import { connect } from 'react-redux';
 import { updateGoogleAPIKey, updateQueryString } from '../../actions';
-import { Card } from '@shopify/polaris';
+import { Button, Heading, Card, TextField, Banner, Page, Loading } from '@shopify/polaris';
 
 const mapStateToProps = state => {
   return {
@@ -19,7 +19,7 @@ function mapDispatchToProps(dispatch) {
   };
 }
 
-class Settings extends Component {
+class ImportExport extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -125,52 +125,70 @@ class Settings extends Component {
   render() {
     console.log(this.state.settings);
     return (
-      <>
-        <div className="divSectionContainer">
-          <div>
-            <Card
-              title="Set up your Google Maps API Key"
-            >
-            </Card>
-          </div>
-        </div>
+      <Page>
+        {this.state.isLoading &&
+          <Loading />
+        }
+        <Banner title={this.state.bannerTitle} status={this.state.bannerStatus} >
+          <p>{this.state.bannerMsg}</p>
+        </Banner>
+        <Card>
+          <div className="settingsWrapper">
+            <Heading>
+              Storefront settings
+            </Heading>
 
-        <div className="divSectionContainer">
-          <div className="divSettings halfWidthDiv">
-            <Card
-              title="General"
-            >
-            </Card>
+            <TextField
+              label="Wrapper class/id"
+              name="wrapperClass"
+              value={this.state.settings.wrapperClass}
+              onChange={this.handleWrapperClassChange}
+            />
+            <TextField
+              label="Section header"
+              name="sectionHeader"
+              value={this.state.settings.sectionHeader}
+              onChange={this.handleSectionHeaderChange}
+            />
           </div>
+        </Card>
 
-          <div className="halfWidthDiv">
-            <Card
-              title="Map settings"
-            >
-            </Card>
-          </div>
-        </div>
+        <Card>
+          <div className="settingsWrapper">
+            <Heading>
+              Server settings
+          </Heading>
+            <TextField
+              label="Google Map API Key"
+              name="googleAPIKey"
+              value={this.state.settings.googleAPIKey}
+              onChange={this.handleGoogleAPIKeyChange}
+            />
 
-        <div className="divSectionContainer">
-          <div className="divSettings">
-            <Card
-              title="Content"
-            >
-            </Card>
+            {this.state.settings.googleAPIWhitelistDomains && this.state.settings.googleAPIWhitelistDomains.map((domain, key) => {
+              return (
+                <TextField
+                  key={key}
+                  label="Whitelist domain"
+                  value={domain}
+                  disabled>
+                </TextField>)
+            })}
           </div>
-        </div>
-
-        <div className="divSectionContainer">
-          <div className="divSettings">
-            <Card
-              title="Language"
+        </Card>
+        <Card>
+          <div className="settingsWrapper">
+            <Button
+              primary
+              onClick={this.saveAllChanges}
             >
-            </Card>
+              Save all changes
+            </Button>
           </div>
-        </div>
-      </>
+        </Card>
+      </Page>
     )
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(Settings);
+export default connect(mapStateToProps, mapDispatchToProps)(ImportExport);

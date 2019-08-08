@@ -3,25 +3,38 @@ import './App.css';
 import { AppProvider, Tabs, Card, Frame } from '@shopify/polaris';
 import IndexPage from './layouts/IndexPage';
 import Settings from './layouts/Settings';
+import OldSettings from './layouts/OldSettings';
 import HowToUse from './layouts/HowToUse';
+import ImportExport from './layouts/ImportExport';
+import Layouts from './layouts/Layouts';
 
 const tabs = [
   {
     id: 'locations',
     content: 'Locations',
     accessibilityLabel: 'All customers',
-    panelID: <IndexPage />,
   },
   {
     id: 'settings',
     content: 'Settings',
-    panelID: 'settings',
+  },
+  {
+    id: 'old',
+    content: 'Stts',
+  },
+  {
+    id: 'importexport',
+    content: 'Import & Export',
+  },
+  {
+    id: 'layouts',
+    content: 'Layouts',
   },
   {
     id: 'guidelines',
     content: 'How to use',
-    panelID: 'ez',
   },
+  
 ];
 
 const tabPanels = [
@@ -33,6 +46,21 @@ const tabPanels = [
   (
     <Tabs.Panel id="settings">
       <Settings/>
+    </Tabs.Panel>
+  ),
+  (
+    <Tabs.Panel id="importexport">
+      <ImportExport/>
+    </Tabs.Panel>
+  ),
+  (
+    <Tabs.Panel id="old">
+      <OldSettings/>
+    </Tabs.Panel>
+  ),
+  (
+    <Tabs.Panel id="layouts">
+      <Layouts/>
     </Tabs.Panel>
   ),
   (
@@ -62,14 +90,13 @@ class App extends Component {
     return (
 
       <div className="App">
-
         <AppProvider>
-        <Frame>
-          <Tabs tabs={tabs} selected={selected} onSelect={this.handleTabChange}>
-            <Card.Section >
-              {tabPanels[selected]}
-            </Card.Section>
-          </Tabs>
+          <Frame>
+            <Tabs tabs={tabs} selected={selected} onSelect={this.handleTabChange}>
+              <Card.Section >
+                {tabPanels[selected]}
+              </Card.Section>
+            </Tabs>
           </Frame>
         </AppProvider>
        

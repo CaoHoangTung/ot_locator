@@ -72,6 +72,21 @@ app.get('/api/getBackendSettings', async (req, res) => {
     res.status(200).send(returnJSON);
 })
 
+app.get('/api/locations/get', async (req,res) => {
+    
+    let json = req.query;
+    let {
+        shop,
+        idlocations
+    } = json;
+    console.log("GETTING ",json);
+    let returnJSON = await db.getLocationByID({
+        idlocations: idlocations,
+        shop: shop
+    });    
+    res.status(200).send(returnJSON);
+})
+
 app.get('/api/locations/all', async (req, res) => {
     let json = req.query;
 
@@ -88,7 +103,7 @@ app.get('/api/locations/all', async (req, res) => {
 app.post('/api/locations/add', (req, res) => {
     // add location
     let json = req.body;
-
+    console.log(json);
     db.addLocation(json)
         .then(response => {
             res.status(200).send(response);
@@ -104,7 +119,6 @@ app.put('/api/locations/modify', (req, res) => {
 
     db.modifyLocation(json)
         .then(response => {
-            console.log(response);
             res.status(200).send(response);
         })
         .catch(err => {
